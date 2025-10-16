@@ -32,7 +32,7 @@
 
 
 // AABB calculation pass
-@compute @workgroup_size(${clusteringWorkgroupSize})
+@compute @workgroup_size(4, 4, 4)
 fn calculateClusterBounds(@builtin(global_invocation_id) globalIdx: vec3u)
 {
     var clusterCount = clusterParams.numClusters;
@@ -104,7 +104,7 @@ fn lightIntersectAABB(lightPos_world: vec3f, bound: AABB) -> bool
     return true;
 }
 
-@compute @workgroup_size(${clusteringWorkgroupSize})
+@compute @workgroup_size(4, 4, 4)
 fn lightCulling(@builtin(global_invocation_id) globalIdx: vec3u)
 {
     var clusterIndex = vec3(globalIdx.x, globalIdx.y, globalIdx.z);
@@ -134,7 +134,7 @@ fn lightCulling(@builtin(global_invocation_id) globalIdx: vec3u)
         }
     }
 
-    // debug
+    // DEBUG
     clusterLightCount = 1;
     clusterLightIdicesList[0] = 0;
 

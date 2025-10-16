@@ -16,7 +16,8 @@ struct VertexOutput
     @location(0) pos: vec3f,
     @location(1) nor: vec3f,
     @location(2) uv: vec2f,
-    @location(3) ndcPos: vec3f,
+    @location(3) viewPos: vec3f,
+    @location(4) ndcPos: vec3f,
 }
 
 @vertex
@@ -30,7 +31,7 @@ fn main(in: VertexInput) -> VertexOutput
     out.nor = in.nor;
     out.uv = in.uv;
 
-    out.ndcPos = out.fragPos.xyz / out.fragPos.w;   // for cluster indexing
-
+    out.viewPos = (cameraUniforms.viewMat * modelPos).xyz;
+    out.ndcPos = out.fragPos.xyz / out.fragPos.w;
     return out;
 }

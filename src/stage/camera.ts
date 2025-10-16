@@ -28,11 +28,11 @@ class CameraUniforms {
 
     // zNear at index 64, zFar at 65
     set zNear(val: number) {
-        this.floatView[48] = val;
+        this.floatView[64] = val;
     }
 
     set zFar(val: number) {
-        this.floatView[49] = val;
+        this.floatView[65] = val;
     }
 
     // TODO-2: add extra functions to set values needed for light clustering here
@@ -168,7 +168,7 @@ export class Camera {
 
         // TODO-2: write to extra buffers needed for light clustering here
         
-
+        
         // check `lights.ts` for examples of using `device.queue.writeBuffer()`
     }
 }

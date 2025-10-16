@@ -60,12 +60,17 @@ export class ForwardPlusRenderer extends renderer.Renderer
         const encoder = renderer.device.createCommandEncoder();
         const canvasTextureView = renderer.context.getCurrentTexture().createView();
 
-        // cluster AABB
+        var dipatchGroupSizeX = Math.ceil(shaders.constants.numClusters[0] / 4.0); 
+        var dipatchGroupSizeY = Math.ceil(shaders.constants.numClusters[1] / 4.0);
+        var dipatchGroupSizeZ = Math.ceil(shaders.constants.numClusters[2] / 4.0);
+
+
+        // cluster AABB 
         const clusterAABBPass = encoder.beginComputePass({label: "forward+ cluster AABB pass"});
         clusterAABBPass.setPipeline(this.clusterAABBComputePipeline);
         clusterAABBPass.setBindGroup(0, this.sceneUniformsBindGroup);
         clusterAABBPass.setBindGroup(1, this.clusterLightingBindGroup);
-        clusterAABBPass.dispatchWorkgroups(shaders.constants.numClusters[0], shaders.constants.numClusters[1], shaders.constants.numClusters[2]);
+        clusterAABBPass.dispatchWorkgroups(1, 1, 1);
         clusterAABBPass.end();
 
         // Light culling
@@ -74,7 +79,7 @@ export class ForwardPlusRenderer extends renderer.Renderer
         lightCullingPass.setPipeline(this.lightCullingComputePipeline);
         lightCullingPass.setBindGroup(0, this.sceneUniformsBindGroup);
         lightCullingPass.setBindGroup(1, this.clusterLightingBindGroup);
-        lightCullingPass.dispatchWorkgroups(shaders.constants.numClusters[0], shaders.constants.numClusters[1], shaders.constants.numClusters[2]);
+        lightCullingPass.dispatchWorkgroups(1, 1, 1);
         lightCullingPass.end();
 
         // Render pass

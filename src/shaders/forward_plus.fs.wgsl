@@ -28,7 +28,8 @@ struct FragmentInput
     @location(0) pos: vec3f,
     @location(1) nor: vec3f,
     @location(2) uv: vec2f,
-    @location(3) ndcPos: vec3f,
+    @location(3) viewPos: vec3f,
+    @location(4) ndcPos: vec3f,
 }
 
 @fragment
@@ -39,17 +40,8 @@ fn main(in: FragmentInput) -> @location(0) vec4f
         discard;
     }
         
-
-    var clusterIndex = ndcToClusterIndex(in.ndcPos);
-    var flattenedClusterIndex = flattenClusterIndex(clusterIndex);
-    var clusterLightInfo : vec2<u32> = clusterSet.lightGrid[flattenedClusterIndex];
-
-    var totalLightContrib = vec3f(0, 0, 0);
-    for (var lightIdx = clusterLightInfo.x; lightIdx < clusterLightInfo.x + clusterLightInfo.y; lightIdx++) {
-        let light = lightSet.lights[lightIdx];
-        totalLightContrib += calculateLightContrib(light, in.pos, normalize(in.nor));
-    }
-
-    var finalColor = u32ToColor(flattenedClusterIndex);// diffuseColor.rgb * totalLightContrib;
+    var finalColor = vec3f(vec3f(ndcToClusterIndex(in.ndcPos))/16);
+                            
+                            // diffuseColor.rgb * totalLightContrib;
     return vec4(finalColor, 1);
 }
