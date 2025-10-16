@@ -1,3 +1,5 @@
+/// <reference types="@webgpu/types" />
+
 import { vec3 } from "wgpu-matrix";
 import { device } from "../renderer";
 

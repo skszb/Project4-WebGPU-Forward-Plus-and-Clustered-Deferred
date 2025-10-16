@@ -3,16 +3,40 @@ import { toRadians } from "../math_util";
 import { device, canvas, fovYDegrees, aspectRatio } from "../renderer";
 
 class CameraUniforms {
-    readonly buffer = new ArrayBuffer(16 * 4);
+    readonly buffer = new ArrayBuffer(64 + 64 + 64 + 64 + 16);   // need padding to n * 16 bytes
     private readonly floatView = new Float32Array(this.buffer);
 
+    // viewProj at 0–15
     set viewProjMat(mat: Float32Array) {
-        // TODO-1.1: set the first 16 elements of `this.floatView` to the input `mat`
+        this.floatView.set(mat, 0);
+    }
+
+    // proj at 16–31
+    set projMat(mat: Float32Array) {
+        this.floatView.set(mat, 16);
+    }
+
+    // invProj at 32–47
+    set invProjMat(mat: Float32Array) {
+        this.floatView.set(mat, 32);
+    }
+
+    // viewMat at 48–63
+    set viewMat(mat: Float32Array) {
+        this.floatView.set(mat, 48);
+    }
+
+    // zNear at index 64, zFar at 65
+    set zNear(val: number) {
+        this.floatView[48] = val;
+    }
+
+    set zFar(val: number) {
+        this.floatView[49] = val;
     }
 
     // TODO-2: add extra functions to set values needed for light clustering here
 }
-
 export class Camera {
     uniforms: CameraUniforms = new CameraUniforms();
     uniformsBuffer: GPUBuffer;
@@ -33,11 +57,14 @@ export class Camera {
     keys: { [key: string]: boolean } = {};
 
     constructor () {
-        // TODO-1.1: set `this.uniformsBuffer` to a new buffer of size `this.uniforms.buffer.byteLength`
-        // ensure the usage is set to `GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST` since we will be copying to this buffer
-        // check `lights.ts` for examples of using `device.createBuffer()`
-        //
         // note that you can add more variables (e.g. inverse proj matrix) to this buffer in later parts of the assignment
+
+        if (!device) { throw new Error("Invalide device or WebGPU not supported."); }
+        this.uniformsBuffer = device.createBuffer({
+            label: "camera uniforms buffer",
+            size: this.uniforms.buffer.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        })
 
         this.projMat = mat4.perspective(toRadians(fovYDegrees), aspectRatio, Camera.nearPlane, Camera.farPlane);
 
@@ -128,11 +155,20 @@ export class Camera {
         const lookPos = vec3.add(this.cameraPos, vec3.scale(this.cameraFront, 1));
         const viewMat = mat4.lookAt(this.cameraPos, lookPos, [0, 1, 0]);
         const viewProjMat = mat4.mul(this.projMat, viewMat);
-        // TODO-1.1: set `this.uniforms.viewProjMat` to the newly calculated view proj mat
+
+        // update camera uniform values
+        this.uniforms.viewProjMat = viewProjMat;
+        this.uniforms.projMat = this.projMat;
+        this.uniforms.invProjMat = mat4.inverse(this.projMat);
+        this.uniforms.viewMat = viewMat;
+        this.uniforms.zNear = Camera.nearPlane;
+        this.uniforms.zFar = Camera.farPlane;
+
+        device.queue.writeBuffer(this.uniformsBuffer, 0, this.uniforms.buffer);
 
         // TODO-2: write to extra buffers needed for light clustering here
+        
 
-        // TODO-1.1: upload `this.uniforms.buffer` (host side) to `this.uniformsBuffer` (device side)
         // check `lights.ts` for examples of using `device.queue.writeBuffer()`
     }
 }

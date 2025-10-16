@@ -1,6 +1,6 @@
 // CHECKITOUT: this file loads all the shaders and preprocesses them with some common code
 
-import { Camera } from '../stage/camera';
+import {Lights} from '../stage/lights.ts'
 
 import commonRaw from './common.wgsl?raw';
 
@@ -23,12 +23,24 @@ import clusteringComputeRaw from './clustering.cs.wgsl?raw';
 
 // Note that these are declared in a somewhat roundabout way because otherwise minification will drop variables
 // that are unused in host side code.
+// What is the purpose of storing the bind group index if they will be mixed up in different pipelines?!!
 export const constants = {
     bindGroup_scene: 0,
     bindGroup_model: 1,
     bindGroup_material: 2,
 
+    bindGroup_clusterLighting: 3,   
+    bindGroup_gBuffers: 3, // for deferred shading
+
+
     moveLightsWorkgroupSize: 128,
+    
+    maxNumLights: Lights.maxNumLights,
+    maxNumLightsPerCluster: 256,
+
+    clusteringWorkgroupSize: 64,
+    numClusters: new Int32Array([16, 16, 16]),
+    totalClusterCount: 16 * 16 * 16,  // need to be the same as numClusters
 
     lightRadius: 2
 };
