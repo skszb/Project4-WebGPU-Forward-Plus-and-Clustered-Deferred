@@ -100,12 +100,11 @@ fn ndcToView(v: vec4f) -> vec3f {
 fn lightIntersectAABB(lightPos_world: vec3f, bound: AABB) -> bool
 {
     var lightPos_view = (cameraUniforms.viewMat * vec4(lightPos_world, 1.f)).xyz;
+    
+    var diff = clamp(lightPos_view.xyz, bound.min, bound.max) - lightPos_view;
+    var distSqr = dot(diff, diff);
 
-    var min = bound.min - ${lightRadius} - 10;
-    var max = bound.max + ${lightRadius} + 10;
-    if (lightPos_view.x < min.x || lightPos_view.x > max.x ||
-        lightPos_view.y < min.y || lightPos_view.y > max.y ||
-        lightPos_view.z < min.z || lightPos_view.z > max.z)
+    if (distSqr > (${lightRadius} * ${lightRadius}))
     {
         return false;
     }
@@ -134,9 +133,8 @@ fn lightCulling(@builtin(global_invocation_id) globalIdx: vec3u)
     for (var i = 0u; i < lightSet.numLights; i++)
     {
         if (clusterLightCount >= ${maxNumLightsPerCluster}) { break; }
-
-        var lightPos_view: vec3f = (cameraUniforms.viewMat * vec4f(lightSet.lights[i].pos, 1)).xyz;
-        if (lightIntersectAABB(lightPos_view, clusterAABB))
+        var lightPos_world = lightSet.lights[i].pos;
+        if (lightIntersectAABB(lightPos_world, clusterAABB))
         {
             clusterLightIdicesList[clusterLightCount] = i;
             clusterLightCount++;

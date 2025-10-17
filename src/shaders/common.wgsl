@@ -68,7 +68,10 @@ fn getClusterIndex(ndcX: f32, ndcY: f32, viewZ: f32, cameraUniforms: CameraUnifo
     var clusterIndex = vec3<u32>(0, 0, 0);
     clusterIndex.x = clamp(u32(floor((ndcX + 1.0) / 2.0 * ${numClusters[0]})), 0, ${numClusters[0]} - 1);
     clusterIndex.y = clamp(u32(floor((ndcY + 1.0) / 2.0 * ${numClusters[1]})), 0, ${numClusters[1]} - 1);
-    clusterIndex.z = u32(floor(log(abs(viewZ) / cameraUniforms.zNear) * ${numClusters[2]}) / log(cameraUniforms.zFar / cameraUniforms.zNear));
+
+
+    let zIdx = u32(floor(log(-viewZ / cameraUniforms.zNear) * ${numClusters[2]} / log(cameraUniforms.zFar / cameraUniforms.zNear)));
+    clusterIndex.z = clamp(zIdx, 0, ${numClusters[2]} - 1);
     return clusterIndex;
 }
 
