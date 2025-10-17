@@ -141,7 +141,7 @@ export class ClusteredDeferredRenderer extends renderer.Renderer {
         })
 
         // Render pass
-        // TODO: add cluster light binding layout
+        // TODO: combine cluster light binding layout
         this.gBufferBindGroupLayout = renderer.device.createBindGroupLayout({
             label: "g-buffer bind group layout",
             entries: [

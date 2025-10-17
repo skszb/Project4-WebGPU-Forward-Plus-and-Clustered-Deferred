@@ -21,7 +21,7 @@ struct ClusterParams
 struct ClusterSet
 {
     numLights: atomic<u32>,
-    lightIndicesList: array<u32, ${maxNumLights}>, 
+    lightIndicesList: array<u32, ${totalClusterCount} * ${maxNumLightsPerCluster}>, 
     lightGrid: array<vec2<u32>, ${totalClusterCount}>,    // offset, light count 
 }
 
@@ -33,6 +33,8 @@ struct CameraUniforms
     viewMat : mat4x4f,
     zNear : f32,
     zFar : f32,
+    eyePos : vec3f,
+
 }
 
 struct AABB 
@@ -56,20 +58,19 @@ fn calculateLightContrib(light: Light, posWorld: vec3f, nor: vec3f) -> vec3f
     return light.color * lambert * rangeAttenuation(distToLight);
 }
 
-fn ndcToClusterIndex(ndc: vec3f) -> vec3<u32> 
-{
-    var clusterIndex = vec3<u32>(0, 0, 0);
-    clusterIndex.x = clamp(u32(floor((ndc.x + 1.0) / 2.0 * ${numClusters[0]})), 0, ${numClusters[0]} - 1);
-    clusterIndex.y = clamp(u32(floor((ndc.y + 1.0) / 2.0 * ${numClusters[1]})), 0, ${numClusters[1]} - 1);
-    clusterIndex.z = u32(floor(ndc.z * ${numClusters[2]}));
-
-    return clusterIndex;
-}
 
 fn flattenClusterIndex(id: vec3<u32>) -> u32 {
     return id.x + id.y * ${numClusters[0]} + id.z * ${numClusters[0]} * ${numClusters[1]};
 }
 
+
+fn getClusterIndex(ndcX: f32, ndcY: f32, viewZ: f32, cameraUniforms: CameraUniforms) -> vec3<u32> {
+    var clusterIndex = vec3<u32>(0, 0, 0);
+    clusterIndex.x = clamp(u32(floor((ndcX + 1.0) / 2.0 * ${numClusters[0]})), 0, ${numClusters[0]} - 1);
+    clusterIndex.y = clamp(u32(floor((ndcY + 1.0) / 2.0 * ${numClusters[1]})), 0, ${numClusters[1]} - 1);
+    clusterIndex.z = u32(floor(log(abs(viewZ) / cameraUniforms.zNear) * ${numClusters[2]}) / log(cameraUniforms.zFar / cameraUniforms.zNear));
+    return clusterIndex;
+}
 
 // debug
 fn murmurHash(x: u32) -> u32 {

@@ -15,7 +15,9 @@
 // Multiply the fragment’s diffuse color by the accumulated light contribution.
 // Return the final color, ensuring that the alpha component is set appropriately (typically to 1).
 
+@group(${bindGroup_scene}) @binding(0) var<uniform> cameraUniforms: CameraUniforms;
 @group(${bindGroup_scene}) @binding(1) var<storage, read> lightSet: LightSet;
+
 
 @group(${bindGroup_material}) @binding(0) var diffuseTex: texture_2d<f32>;
 @group(${bindGroup_material}) @binding(1) var diffuseTexSampler: sampler;
@@ -25,11 +27,12 @@
 
 struct FragmentInput
 {
+    @builtin(position) fragPos: vec4f,
     @location(0) pos: vec3f,
     @location(1) nor: vec3f,
     @location(2) uv: vec2f,
     @location(3) viewPos: vec3f,
-    @location(4) ndcPos: vec3f,
+    @location(4)@interpolate(linear) ndcPos: vec3f,
 }
 
 @fragment
@@ -39,9 +42,28 @@ fn main(in: FragmentInput) -> @location(0) vec4f
     if (diffuseColor.a < 0.5f) {
         discard;
     }
-        
-    var finalColor = vec3f(vec3f(ndcToClusterIndex(in.ndcPos))/16);
+    
+    var clusterIndex = getClusterIndex(in.ndcPos.x, in.ndcPos.y, in.viewPos.z, cameraUniforms);
+    var flattenClusterIndex = flattenClusterIndex(clusterIndex);
+
+    var clusterlightGridInfo = clusterSet.lightGrid[flattenClusterIndex];
+    var clusterLightIndicesStart = clusterlightGridInfo.x;
+    var clusterLightCount = clusterlightGridInfo.y;
+
+    var totalLightContrib = vec3f(0.0, 0.0, 0.0);
+    for (var i = 0u; i < clusterLightCount; i++)
+    {
+        var lightIndex = clusterSet.lightIndicesList[clusterLightIndicesStart + i];
+        var lightContrib = calculateLightContrib(lightSet.lights[lightIndex], in.pos, in.nor);
+        totalLightContrib += lightContrib;
+    }
+
+    // var finalColor = vec3f(clusterIndex) / vec3f(${numClusters[0]}, ${numClusters[1]}, ${numClusters[2]});
+    // var finalColor = vec3f(f32(clusterLightCount));
+    var finalColor = diffuseColor.rgb * totalLightContrib;
                             
-                            // diffuseColor.rgb * totalLightContrib;
     return vec4(finalColor, 1);
 }
+
+
+

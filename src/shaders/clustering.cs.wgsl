@@ -48,32 +48,41 @@ fn calculateClusterBounds(@builtin(global_invocation_id) globalIdx: vec3u)
     // size of each cluster in NDC
     var clusterXLength_ndc = 2.f / f32(clusterCount.x);
     var clusterYLength_ndc = 2.f / f32(clusterCount.y);
-    var clusterZLength_ndc = 1.f / f32(clusterCount.z);
 
     var xMin_ndc = -1.0;
     var yMin_ndc = -1.0;
-    var zNear_ndc = 0.0; 
 
-    var clusterZNear_ndc = zNear_ndc + f32(clusterIndex.z) * clusterZLength_ndc;
-    var clusterZFar_ndc = clusterZNear_ndc + clusterZLength_ndc;
 
-    var frustumCorners_ndc : array<vec4f, 4>;
+    // slice x, y in ndc
+    var clusterMinX_ndc = xMin_ndc + f32(clusterIndex.x) * clusterXLength_ndc;
+    var clusterMaxX_ndc = clusterMinX_ndc + clusterXLength_ndc;
+    var clusterMinY_ndc = yMin_ndc + f32(clusterIndex.y) * clusterYLength_ndc;
+    var clusterMaxY_ndc = clusterMinY_ndc + clusterYLength_ndc;
 
-    // near min and max
-    frustumCorners_ndc[0] = vec4f(xMin_ndc + f32(clusterIndex.x) * clusterXLength_ndc, 
-                                    yMin_ndc + f32(clusterIndex.y) * clusterYLength_ndc, 
-                                    zNear_ndc + f32(clusterIndex.z) * clusterZLength_ndc, 1.0);
-                                    
-    frustumCorners_ndc[1] = frustumCorners_ndc[0] + vec4f(clusterXLength_ndc, clusterYLength_ndc, 0, 0); 
-    // far min and max
-    frustumCorners_ndc[2] = frustumCorners_ndc[0] + vec4f(0, 0, clusterZLength_ndc, 0);
-    frustumCorners_ndc[3] = frustumCorners_ndc[1] + vec4f(0, 0, clusterZLength_ndc, 0);
+    // slice z in view then convert to ndc
+    // var clusterZNear_view = -((cameraUniforms.zFar - cameraUniforms.zNear) * f32(clusterIndex.z) / f32(clusterParams.numClusters.z) + cameraUniforms.zNear);
+    var clusterZNear_view = -cameraUniforms.zNear * pow(f32(cameraUniforms.zFar) / f32(cameraUniforms.zNear), f32(clusterIndex.z) / f32(clusterParams.numClusters.z));
+    var minZ_ndc_vec = cameraUniforms.projMat * vec4<f32>(0.0,0.0,clusterZNear_view,1.0);
+    var minZ_ndc = minZ_ndc_vec.z/minZ_ndc_vec.w;
+
+    // var clusterZFar_view = -((cameraUniforms.zFar - cameraUniforms.zNear) * f32(clusterIndex.z + 1) / f32(clusterParams.numClusters.z) + cameraUniforms.zNear);
+    var clusterZFar_view = -cameraUniforms.zNear * pow(f32(cameraUniforms.zFar) / f32(cameraUniforms.zNear), f32(clusterIndex.z + 1) / f32(clusterParams.numClusters.z));
+    var maxZ_ndc_vec = cameraUniforms.projMat * vec4<f32>(0.0,0.0,clusterZFar_view,1.0);
+    var maxZ_ndc = maxZ_ndc_vec.z/maxZ_ndc_vec.w;
     
+
+    // cluster AABB in ndc, then to view.
+    var clusterCorners_ndc : array<vec4f, 4>;
+    clusterCorners_ndc[0] = vec4f(clusterMinX_ndc, clusterMinY_ndc, minZ_ndc, 1.0); // near min
+    clusterCorners_ndc[1] = vec4f(clusterMaxX_ndc, clusterMinY_ndc, minZ_ndc, 1.0); // near max
+    clusterCorners_ndc[2] = vec4f(clusterMinX_ndc, clusterMaxY_ndc, maxZ_ndc, 1.0); // far min
+    clusterCorners_ndc[3] = vec4f(clusterMaxX_ndc, clusterMaxY_ndc, maxZ_ndc, 1.0); // far max
+
     var min_view = vec3f(1000000, 1000000, 1000000);
     var max_view = vec3f(-1000000, -1000000, -1000000);
     for (var i = 0u; i < 4u; i++) 
     {
-        var corner_view = ndcToView(frustumCorners_ndc[i]);
+        var corner_view = ndcToView(clusterCorners_ndc[i]);
         min_view = min(min_view, corner_view);
         max_view = max(max_view, corner_view);
     }
@@ -92,8 +101,8 @@ fn lightIntersectAABB(lightPos_world: vec3f, bound: AABB) -> bool
 {
     var lightPos_view = (cameraUniforms.viewMat * vec4(lightPos_world, 1.f)).xyz;
 
-    var min = bound.min - ${lightRadius};
-    var max = bound.max + ${lightRadius};
+    var min = bound.min - ${lightRadius} - 10;
+    var max = bound.max + ${lightRadius} + 10;
     if (lightPos_view.x < min.x || lightPos_view.x > max.x ||
         lightPos_view.y < min.y || lightPos_view.y > max.y ||
         lightPos_view.z < min.z || lightPos_view.z > max.z)
@@ -104,7 +113,7 @@ fn lightIntersectAABB(lightPos_world: vec3f, bound: AABB) -> bool
     return true;
 }
 
-@compute @workgroup_size(4, 4, 4)
+@compute @workgroup_size(${workGroupSize[0]}, ${workGroupSize[1]}, ${workGroupSize[2]})
 fn lightCulling(@builtin(global_invocation_id) globalIdx: vec3u)
 {
     var clusterIndex = vec3(globalIdx.x, globalIdx.y, globalIdx.z);
@@ -116,7 +125,6 @@ fn lightCulling(@builtin(global_invocation_id) globalIdx: vec3u)
 
     var flattendClusterIndex = flattenClusterIndex(clusterIndex);
 
-
     // light culling local storage
     var clusterLightCount= 0u;
     var clusterLightIdicesList: array<u32, ${maxNumLightsPerCluster}>;
@@ -127,18 +135,14 @@ fn lightCulling(@builtin(global_invocation_id) globalIdx: vec3u)
     {
         if (clusterLightCount >= ${maxNumLightsPerCluster}) { break; }
 
-        if (lightIntersectAABB(lightSet.lights[i].pos, clusterAABB))
+        var lightPos_view: vec3f = (cameraUniforms.viewMat * vec4f(lightSet.lights[i].pos, 1)).xyz;
+        if (lightIntersectAABB(lightPos_view, clusterAABB))
         {
             clusterLightIdicesList[clusterLightCount] = i;
             clusterLightCount++;
         }
     }
-
-    // DEBUG
-    clusterLightCount = 1;
-    clusterLightIdicesList[0] = 0;
-
-
+    
     var lightBufferAppendStart = atomicAdd(&clusterSets.numLights, u32(clusterLightCount));
     for (var i = 0u; i < clusterLightCount; i++)
     {

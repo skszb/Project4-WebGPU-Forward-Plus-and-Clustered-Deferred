@@ -17,7 +17,7 @@ struct VertexOutput
     @location(1) nor: vec3f,
     @location(2) uv: vec2f,
     @location(3) viewPos: vec3f,
-    @location(4) ndcPos: vec3f,
+    @location(4)@interpolate(linear) ndcPos: vec3f,
 }
 
 @vertex

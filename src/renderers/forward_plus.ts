@@ -60,9 +60,9 @@ export class ForwardPlusRenderer extends renderer.Renderer
         const encoder = renderer.device.createCommandEncoder();
         const canvasTextureView = renderer.context.getCurrentTexture().createView();
 
-        var dipatchGroupSizeX = Math.ceil(shaders.constants.numClusters[0] / 4.0); 
-        var dipatchGroupSizeY = Math.ceil(shaders.constants.numClusters[1] / 4.0);
-        var dipatchGroupSizeZ = Math.ceil(shaders.constants.numClusters[2] / 4.0);
+        var dipatchGroupSizeX = Math.ceil(shaders.constants.numClusters[0] / shaders.constants.workGroupSize[0]); 
+        var dipatchGroupSizeY = Math.ceil(shaders.constants.numClusters[1] / shaders.constants.workGroupSize[1]);
+        var dipatchGroupSizeZ = Math.ceil(shaders.constants.numClusters[2] / shaders.constants.workGroupSize[2]);
 
 
         // cluster AABB 
@@ -70,7 +70,7 @@ export class ForwardPlusRenderer extends renderer.Renderer
         clusterAABBPass.setPipeline(this.clusterAABBComputePipeline);
         clusterAABBPass.setBindGroup(0, this.sceneUniformsBindGroup);
         clusterAABBPass.setBindGroup(1, this.clusterLightingBindGroup);
-        clusterAABBPass.dispatchWorkgroups(1, 1, 1);
+        clusterAABBPass.dispatchWorkgroups(dipatchGroupSizeX, dipatchGroupSizeY, dipatchGroupSizeZ);
         clusterAABBPass.end();
 
         // Light culling
@@ -79,7 +79,7 @@ export class ForwardPlusRenderer extends renderer.Renderer
         lightCullingPass.setPipeline(this.lightCullingComputePipeline);
         lightCullingPass.setBindGroup(0, this.sceneUniformsBindGroup);
         lightCullingPass.setBindGroup(1, this.clusterLightingBindGroup);
-        lightCullingPass.dispatchWorkgroups(1, 1, 1);
+        lightCullingPass.dispatchWorkgroups(dipatchGroupSizeX, dipatchGroupSizeY, dipatchGroupSizeZ);
         lightCullingPass.end();
 
         // Render pass
@@ -146,7 +146,7 @@ export class ForwardPlusRenderer extends renderer.Renderer
         this.clusterSetBuffer = renderer.device.createBuffer({   // ClusterSet
             label: "cluster set buffer",
             // Pad to 16 byte boundaries for alignment (larger than required but I don't want to deal with alignment issues)
-            size: Math.ceil((1+Lights.maxNumLights) / 4) * 16 + Math.ceil(shaders.constants.totalClusterCount / 2) * 16, 
+            size: Math.ceil((1 + shaders.constants.totalClusterCount * shaders.constants.maxNumLightsPerCluster) / 4) * 16 + Math.ceil(shaders.constants.totalClusterCount / 2) * 16, 
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
         
@@ -161,7 +161,7 @@ export class ForwardPlusRenderer extends renderer.Renderer
             entries: [
                 { // camera uniforms
                     binding: 0,
-                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE,   
+                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE | GPUShaderStage.FRAGMENT,   
                     buffer: { type: "uniform" }          
                 },
                 { // lightSet
