@@ -24,7 +24,6 @@ export class ForwardPlusRenderer extends renderer.Renderer
         this.allocateResources();
         this.createBindGroups();
         this.createPipelines();
-        this.initializeData();
     }
 
 
@@ -33,7 +32,7 @@ export class ForwardPlusRenderer extends renderer.Renderer
         const encoder = renderer.device.createCommandEncoder();
         const canvasTextureView = renderer.context.getCurrentTexture().createView();
 
-        // Run cluster compute using the moved logic from lights.ts
+        // Cluster compute 
         this.lights.doLightClustering(encoder);
 
         // Render pass
@@ -73,7 +72,7 @@ export class ForwardPlusRenderer extends renderer.Renderer
     }
 
 
-    allocateResources()
+    private allocateResources()
     {
         // depth texture 
         this.depthTexture = renderer.device.createTexture({
@@ -86,7 +85,7 @@ export class ForwardPlusRenderer extends renderer.Renderer
     }
 
 
-    createBindGroups()
+    private createBindGroups()
     {
         // Uniforms bind group
         this.sceneUniformsBindGroupLayout = renderer.device.createBindGroupLayout({
@@ -123,7 +122,7 @@ export class ForwardPlusRenderer extends renderer.Renderer
     }
 
 
-    createPipelines()
+    private createPipelines()
     {
         // Render pipeline
         let renderPipelineLayout = renderer.device.createPipelineLayout({
@@ -164,11 +163,5 @@ export class ForwardPlusRenderer extends renderer.Renderer
                 entryPoint: "main",
             },
         });
-    }
-
-    initializeData()
-    {
-        // fill camera uniforms buffer
-        renderer.device.queue.writeBuffer(this.camera.uniformsBuffer, 0, this.camera.uniforms.buffer);
     }
 }

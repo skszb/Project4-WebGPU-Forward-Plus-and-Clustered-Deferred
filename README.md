@@ -28,8 +28,6 @@ to implementation work. Complete the implementation early to leave time!
 
 no more than 4 bind groups
 how to save bind group id properly?
-
-
 groupsize <= 256
 
 

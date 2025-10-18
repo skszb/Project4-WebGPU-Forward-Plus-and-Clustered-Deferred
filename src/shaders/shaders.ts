@@ -30,7 +30,6 @@ export const constants = {
     bindGroup_material: 2,
 
     bindGroup_clusterLighting: 3,   
-    bindGroup_gBuffers: 3, // for deferred shading
 
 
     moveLightsWorkgroupSize: 128,
