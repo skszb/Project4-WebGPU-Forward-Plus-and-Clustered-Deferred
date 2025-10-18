@@ -55,8 +55,9 @@ fn main(@builtin(global_invocation_id) globalIdx: vec3u) {
     if (lightIdx >= lightSet.numLights) {
         return;
     }
-
-    let scaledTime = time / 5000.f;
+    
+    var scaledTime = time / 5000.f;
+    // scaledTime = 15.0f;
 
     let noise = perlin3(lightIdx, scaledTime);
     // perlin noise rarely reaches the extremes (-1 and 1), so scale accordingly here to ensure lights reach

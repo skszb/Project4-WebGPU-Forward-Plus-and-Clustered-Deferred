@@ -44,11 +44,15 @@ fn main(in: FragmentInput) -> @location(0) vec4f
     }
     
     var clusterIndex = getClusterIndex(in.ndcPos.x, in.ndcPos.y, in.viewPos.z, cameraUniforms);
-    var flattenClusterIndex = flattenClusterIndex(clusterIndex);
+    var flattendClusterIndex = flattenClusterIndex(clusterIndex);
 
-    var clusterlightGridInfo = clusterSet.lightGrid[flattenClusterIndex];
+    var clusterlightGridInfo = clusterSet.lightGrid[flattendClusterIndex];
     var clusterLightIndicesStart = clusterlightGridInfo.x;
     var clusterLightCount = clusterlightGridInfo.y;
+
+    // DEBUG
+    return vec4(clusterLightLimitDebugColor(clusterLightCount),1);
+    // END DEBUG
 
     var totalLightContrib = vec3f(0.0, 0.0, 0.0);
     for (var i = 0u; i < clusterLightCount; i++)
@@ -58,12 +62,11 @@ fn main(in: FragmentInput) -> @location(0) vec4f
         totalLightContrib += lightContrib;
     }
 
-    // var finalColor = vec3f(clusterIndex) / vec3f(${numClusters[0]}, ${numClusters[1]}, ${numClusters[2]});
-    // var finalColor = vec3f(f32(clusterLightCount));
+    
+    // var finalColor = clusterLightLimitDebugColor(clusterLightCount);
     var finalColor = diffuseColor.rgb * totalLightContrib;
                             
     return vec4(finalColor, 1);
 }
-
 
 

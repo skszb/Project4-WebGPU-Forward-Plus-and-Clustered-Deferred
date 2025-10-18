@@ -32,7 +32,7 @@
 
 
 // AABB calculation pass
-@compute @workgroup_size(4, 4, 4)
+@compute @workgroup_size(${workGroupSize[0]}, ${workGroupSize[1]}, ${workGroupSize[2]})
 fn calculateClusterBounds(@builtin(global_invocation_id) globalIdx: vec3u)
 {
     var clusterCount = clusterParams.numClusters;
@@ -133,6 +133,7 @@ fn lightCulling(@builtin(global_invocation_id) globalIdx: vec3u)
     for (var i = 0u; i < lightSet.numLights; i++)
     {
         if (clusterLightCount >= ${maxNumLightsPerCluster}) { break; }
+        
         var lightPos_world = lightSet.lights[i].pos;
         if (lightIntersectAABB(lightPos_world, clusterAABB))
         {

@@ -38,13 +38,14 @@ export const constants = {
     maxNumLights: Lights.maxNumLights,
     maxNumLightsPerCluster: 512,
 
-    clusteringWorkgroupSize: 64,
-    numClusters: new Int32Array([4, 4, 1]),
+    numClusters: new Int32Array([16, 16, 16]),
+    totalClusterCount:  16 * 16 * 16,
+
     workGroupSize: new Int32Array([4, 4, 8]),
-    totalClusterCount: 16 * 16 * 16,  // need to be the same as numClusters
 
     lightRadius: 2
 };
+
 
 // =================================
 

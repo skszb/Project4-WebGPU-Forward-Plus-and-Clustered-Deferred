@@ -18,11 +18,13 @@ struct ClusterParams
     maxNumLightsPerCluster: u32,
 }
 
+const totalClusterCount = ${numClusters[0]} * ${numClusters[1]} * ${numClusters[2]};
+
 struct ClusterSet
 {
     numLights: atomic<u32>,
-    lightIndicesList: array<u32, ${totalClusterCount} * ${maxNumLightsPerCluster}>, 
-    lightGrid: array<vec2<u32>, ${totalClusterCount}>,    // offset, light count 
+    lightIndicesList: array<u32, totalClusterCount * ${maxNumLightsPerCluster}>, 
+    lightGrid: array<vec2<u32>, totalClusterCount>,    // offset, light count 
 }
 
 struct CameraUniforms 
@@ -66,8 +68,8 @@ fn flattenClusterIndex(id: vec3<u32>) -> u32 {
 
 fn getClusterIndex(ndcX: f32, ndcY: f32, viewZ: f32, cameraUniforms: CameraUniforms) -> vec3<u32> {
     var clusterIndex = vec3<u32>(0, 0, 0);
-    clusterIndex.x = clamp(u32(floor((ndcX + 1.0) / 2.0 * ${numClusters[0]})), 0, ${numClusters[0]} - 1);
-    clusterIndex.y = clamp(u32(floor((ndcY + 1.0) / 2.0 * ${numClusters[1]})), 0, ${numClusters[1]} - 1);
+    clusterIndex.x = clamp(u32(floor((ndcX + 1.0) * 0.5 * ${numClusters[0]})), 0, ${numClusters[0]} - 1);
+    clusterIndex.y = clamp(u32(floor((ndcY + 1.0) * 0.5 * ${numClusters[1]})), 0, ${numClusters[1]} - 1);
 
 
     let zIdx = u32(floor(log(-viewZ / cameraUniforms.zNear) * ${numClusters[2]} / log(cameraUniforms.zFar / cameraUniforms.zNear)));
@@ -98,4 +100,16 @@ fn u32ToColor(id: u32) -> vec3<f32> {
         f32((g >> 8u) & 0xFFu) / 255.0,
         f32((b >> 16u) & 0xFFu) / 255.0
     );
+}
+
+fn clusterLightLimitDebugColor(count: u32) -> vec3f
+{
+    var limit = f32(count) / ${maxNumLightsPerCluster};
+    var finalColor = vec3f(limit);
+    if (limit > 0.99)
+    {
+        finalColor = vec3(1,0,0);
+    }
+
+    return finalColor;
 }
