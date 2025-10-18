@@ -30,7 +30,15 @@ export class Lights {
     moveLightsComputeBindGroup: GPUBindGroup;
     moveLightsComputePipeline: GPUComputePipeline;
 
-    // TODO-2: add layouts, pipelines, textures, etc. needed for light clustering here
+    // Cluster compute resources
+    clusterLightingBindGroupLayout: GPUBindGroupLayout;
+    clusterLightingBindGroup: GPUBindGroup;
+    clusterAABBComputePipeline: GPUComputePipeline;
+    lightCullingComputePipeline: GPUComputePipeline;
+    
+    clusterParamsBuffer: GPUBuffer;
+    clusterSetBuffer: GPUBuffer;
+    clusterAABBsBuffer: GPUBuffer;
 
     constructor(camera: Camera) {
         this.camera = camera;
@@ -95,7 +103,138 @@ export class Lights {
             }
         });
 
-        // TODO-2: initialize layouts, pipelines, textures, etc. needed for light clustering here
+        this.initializeClusterCompute();
+    }
+
+    private initializeClusterCompute() {
+        // Create cluster compute buffers
+        this.clusterParamsBuffer = device.createBuffer({
+            label: "cluster params buffer",
+            size: 16, // ClusterParams struct size
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+        
+        this.clusterAABBsBuffer = device.createBuffer({
+            label: "cluster aabbs buffer",
+            size: shaders.constants.totalClusterCount * 32, // AABB size
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+
+        this.clusterSetBuffer = device.createBuffer({
+            label: "cluster set buffer",
+            size: Math.ceil((1 + shaders.constants.totalClusterCount * shaders.constants.maxNumLightsPerCluster) / 4) * 16 + Math.ceil(shaders.constants.totalClusterCount / 2) * 16,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+
+        // Create cluster compute bind group layout
+        this.clusterLightingBindGroupLayout = device.createBindGroupLayout({
+            label: "cluster lighting bind group layout",
+            entries: [
+                {   // clusterParams
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                {   // AABB
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "storage" }
+                },
+                {   // clusterSets
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE | GPUShaderStage.FRAGMENT,
+                    buffer: { type: "storage" }
+                },
+            ]
+        });
+
+        // Create cluster compute bind group
+        this.clusterLightingBindGroup = device.createBindGroup({
+            label: "cluster lighting bind group",
+            layout: this.clusterLightingBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.clusterParamsBuffer}
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: this.clusterAABBsBuffer}
+                },
+                {
+                    binding: 2,
+                    resource: { buffer: this.clusterSetBuffer}
+                }
+            ]
+        });
+
+        // Create scene uniforms bind group layout for cluster compute
+        const sceneUniformsBindGroupLayout = device.createBindGroupLayout({
+            label: "scene uniforms bind group layout for cluster compute",
+            entries: [
+                { // camera uniforms
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }          
+                },
+                { // lightSet
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "read-only-storage" }
+                }
+            ]
+        });
+
+        // Create scene uniforms bind group for cluster compute
+        const sceneUniformsBindGroup = device.createBindGroup({
+            label: "scene uniforms bind group for cluster compute",
+            layout: sceneUniformsBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.camera.uniformsBuffer }
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: this.lightSetStorageBuffer }
+                }
+            ]
+        });
+
+        // Create compute pipelines
+        this.clusterAABBComputePipeline = device.createComputePipeline({
+            label: "cluster AABB compute pipeline",
+            layout: device.createPipelineLayout({
+                bindGroupLayouts: [
+                    sceneUniformsBindGroupLayout,  // camera + lights
+                    this.clusterLightingBindGroupLayout,  // clusterParams + AABB + clusterSet
+                ]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "cluster AABB compute shader",
+                    code: shaders.clusteringComputeSrc
+                }),
+                entryPoint: "calculateClusterBounds"
+            }
+        });
+
+        this.lightCullingComputePipeline = device.createComputePipeline({
+            label: "light culling compute pipeline",
+            layout: device.createPipelineLayout({
+                bindGroupLayouts: [
+                    sceneUniformsBindGroupLayout,  // camera + lights
+                    this.clusterLightingBindGroupLayout,  // clusterParams + AABB + clusterSet
+                ]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "light culling compute shader",
+                    code: shaders.clusteringComputeSrc,
+                }),
+                entryPoint: "lightCulling",
+            }
+        });
     }
 
     private populateLightsBuffer() {
@@ -113,8 +252,51 @@ export class Lights {
     }
 
     doLightClustering(encoder: GPUCommandEncoder) {
-        // TODO-2: run the light clustering compute pass(es) here
-        // implementing clustering here allows for reusing the code in both Forward+ and Clustered Deferred
+        // Initialize cluster params
+        const clusterParams = new Uint32Array(4);
+        clusterParams.set(shaders.constants.numClusters, 0);
+        clusterParams[3] = shaders.constants.maxNumLightsPerCluster;
+        device.queue.writeBuffer(this.clusterParamsBuffer, 0, clusterParams);
+
+        // Reset cluster set data
+        device.queue.writeBuffer(this.clusterSetBuffer, 0, new Uint32Array([0]));
+
+        // Calculate dispatch group sizes
+        const dispatchGroupSizeX = Math.ceil(shaders.constants.numClusters[0] / 4.0);
+        const dispatchGroupSizeY = Math.ceil(shaders.constants.numClusters[1] / 4.0);
+        const dispatchGroupSizeZ = Math.ceil(shaders.constants.numClusters[2] / 4.0);
+
+        // Create scene uniforms bind group for this frame
+        const sceneUniformsBindGroup = device.createBindGroup({
+            label: "scene uniforms bind group for cluster compute",
+            layout: this.clusterAABBComputePipeline.getBindGroupLayout(0),
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.camera.uniformsBuffer }
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: this.lightSetStorageBuffer }
+                }
+            ]
+        });
+
+        // Cluster AABB calculation pass
+        const clusterAABBPass = encoder.beginComputePass({label: "cluster AABB pass"});
+        clusterAABBPass.setPipeline(this.clusterAABBComputePipeline);
+        clusterAABBPass.setBindGroup(0, sceneUniformsBindGroup); // camera + lights
+        clusterAABBPass.setBindGroup(1, this.clusterLightingBindGroup); // cluster params + AABB + clusterSet
+        clusterAABBPass.dispatchWorkgroups(dispatchGroupSizeX, dispatchGroupSizeY, dispatchGroupSizeZ);
+        clusterAABBPass.end();
+
+        // Light culling pass
+        const lightCullingPass = encoder.beginComputePass({label: "light culling pass"});
+        lightCullingPass.setPipeline(this.lightCullingComputePipeline);
+        lightCullingPass.setBindGroup(0, sceneUniformsBindGroup); // camera + lights
+        lightCullingPass.setBindGroup(1, this.clusterLightingBindGroup); // cluster params + AABB + clusterSet
+        lightCullingPass.dispatchWorkgroups(dispatchGroupSizeX, dispatchGroupSizeY, dispatchGroupSizeZ);
+        lightCullingPass.end();
     }
 
     // CHECKITOUT: this is where the light movement compute shader is dispatched from the host

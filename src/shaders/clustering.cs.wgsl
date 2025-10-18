@@ -22,8 +22,8 @@
 
 //     - Store the number of lights assigned to this cluster.
 
-@group(0) @binding(0) var<uniform> cameraUniforms: CameraUniforms;
-@group(0) @binding(1) var<storage, read> lightSet: LightSet;
+@group(${bindGroup_scene}) @binding(0) var<uniform> cameraUniforms: CameraUniforms;
+@group(${bindGroup_scene}) @binding(1) var<storage, read> lightSet: LightSet;
 
 // cluster generation pass
 @group(1) @binding(0) var<uniform> clusterParams: ClusterParams;
