@@ -262,9 +262,9 @@ export class Lights {
         device.queue.writeBuffer(this.clusterSetBuffer, 0, new Uint32Array([0]));
 
         // Calculate dispatch group sizes
-        const dispatchGroupSizeX = Math.ceil(shaders.constants.numClusters[0] / 4.0);
-        const dispatchGroupSizeY = Math.ceil(shaders.constants.numClusters[1] / 4.0);
-        const dispatchGroupSizeZ = Math.ceil(shaders.constants.numClusters[2] / 4.0);
+        const dispatchGroupSizeX = Math.ceil(shaders.constants.numClusters[0] / shaders.constants.workGroupSize[0]);
+        const dispatchGroupSizeY = Math.ceil(shaders.constants.numClusters[1] / shaders.constants.workGroupSize[1]);
+        const dispatchGroupSizeZ = Math.ceil(shaders.constants.numClusters[2] / shaders.constants.workGroupSize[2]);
 
         // Create scene uniforms bind group for this frame
         const sceneUniformsBindGroup = device.createBindGroup({

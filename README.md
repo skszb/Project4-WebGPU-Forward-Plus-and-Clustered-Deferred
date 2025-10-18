@@ -23,6 +23,16 @@ project, and we will not be able to grade you without a good README.
 This assignment has a considerable amount of performance analysis compared
 to implementation work. Complete the implementation early to leave time!
 
+
+### etc
+
+no more than 4 bind groups
+how to save bind group id properly?
+
+
+groupsize <= 256
+
+
 ### Credits
 
 - [Vite](https://vitejs.dev/)
