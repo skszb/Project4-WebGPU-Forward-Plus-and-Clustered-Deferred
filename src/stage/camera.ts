@@ -3,7 +3,7 @@ import { toRadians } from "../math_util";
 import { device, canvas, fovYDegrees, aspectRatio } from "../renderer";
 
 class CameraUniforms {
-    readonly buffer = new ArrayBuffer(64 + 64 + 64 + 64 + 16 + 16);   // need padding to n * 16 bytes
+    readonly buffer = new ArrayBuffer(64 + 64 + 64 + 64 + 16);   // need padding to n * 16 bytes
     private readonly floatView = new Float32Array(this.buffer);
 
     // viewProj at 0–15
@@ -33,13 +33,7 @@ class CameraUniforms {
 
     set zFar(val: number) {
         this.floatView[65] = val;
-    }
-
-    set eyePos(val: Vec3) {
-        this.floatView.set(val, 68);
-    }
-
-    
+    } 
 
     // TODO-2: add extra functions to set values needed for light clustering here
 }
@@ -169,7 +163,6 @@ export class Camera {
         this.uniforms.viewMat = viewMat;
         this.uniforms.zNear = Camera.nearPlane;
         this.uniforms.zFar = Camera.farPlane;
-        this.uniforms.eyePos = this.cameraPos;
 
         device.queue.writeBuffer(this.uniformsBuffer, 0, this.uniforms.buffer);
 

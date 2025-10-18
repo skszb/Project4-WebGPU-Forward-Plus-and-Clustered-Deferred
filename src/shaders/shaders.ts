@@ -38,10 +38,10 @@ export const constants = {
     maxNumLights: Lights.maxNumLights,
     maxNumLightsPerCluster: 512,
 
-    numClusters: new Int32Array([16, 16, 16]),
-    totalClusterCount:  16 * 16 * 16,
+    numClusters: new Int32Array([16, 10, 32]),
+    totalClusterCount:  16 * 10 * 32,
 
-    workGroupSize: new Int32Array([4, 4, 8]),
+    workGroupSize: new Int32Array([16, 4, 4]),
 
     lightRadius: 2
 };

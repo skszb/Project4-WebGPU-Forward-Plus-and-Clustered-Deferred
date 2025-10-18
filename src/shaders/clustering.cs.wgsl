@@ -60,13 +60,13 @@ fn calculateClusterBounds(@builtin(global_invocation_id) globalIdx: vec3u)
     var clusterMaxY_ndc = clusterMinY_ndc + clusterYLength_ndc;
 
     // slice z in view then convert to ndc
-    // var clusterZNear_view = -((cameraUniforms.zFar - cameraUniforms.zNear) * f32(clusterIndex.z) / f32(clusterParams.numClusters.z) + cameraUniforms.zNear);
-    var clusterZNear_view = -cameraUniforms.zNear * pow(f32(cameraUniforms.zFar) / f32(cameraUniforms.zNear), f32(clusterIndex.z) / f32(clusterParams.numClusters.z));
+    // var clusterZNear_view = -((cameraUniforms.zFar - cameraUniforms.zNear) * f32(clusterIndex.z) / f32(clusterCount.z) + cameraUniforms.zNear);
+    var clusterZNear_view = -cameraUniforms.zNear * pow(f32(cameraUniforms.zFar) / f32(cameraUniforms.zNear), f32(clusterIndex.z) / f32(clusterCount.z));
     var minZ_ndc_vec = cameraUniforms.projMat * vec4<f32>(0.0,0.0,clusterZNear_view,1.0);
     var minZ_ndc = minZ_ndc_vec.z/minZ_ndc_vec.w;
 
-    // var clusterZFar_view = -((cameraUniforms.zFar - cameraUniforms.zNear) * f32(clusterIndex.z + 1) / f32(clusterParams.numClusters.z) + cameraUniforms.zNear);
-    var clusterZFar_view = -cameraUniforms.zNear * pow(f32(cameraUniforms.zFar) / f32(cameraUniforms.zNear), f32(clusterIndex.z + 1) / f32(clusterParams.numClusters.z));
+    // var clusterZFar_view = -((cameraUniforms.zFar - cameraUniforms.zNear) * f32(clusterIndex.z + 1) / f32(clusterCount.z) + cameraUniforms.zNear);
+    var clusterZFar_view = -cameraUniforms.zNear * pow(f32(cameraUniforms.zFar) / f32(cameraUniforms.zNear), f32(clusterIndex.z + 1) / f32(clusterCount.z));
     var maxZ_ndc_vec = cameraUniforms.projMat * vec4<f32>(0.0,0.0,clusterZFar_view,1.0);
     var maxZ_ndc = maxZ_ndc_vec.z/maxZ_ndc_vec.w;
     

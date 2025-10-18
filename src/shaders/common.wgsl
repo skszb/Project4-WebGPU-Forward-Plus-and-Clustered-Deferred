@@ -35,8 +35,6 @@ struct CameraUniforms
     viewMat : mat4x4f,
     zNear : f32,
     zFar : f32,
-    eyePos : vec3f,
-
 }
 
 struct AABB 
