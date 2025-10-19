@@ -77,6 +77,7 @@ export class Camera {
         canvas.addEventListener('mousedown', () => canvas.requestPointerLock());
         canvas.addEventListener('mouseup', () => document.exitPointerLock());
         canvas.addEventListener('mousemove', (event) => this.onMouseMove(event));
+        console.log("canvas width: ", canvas.width, "canvas height: ", canvas.height);
     }
 
     private onKeyEvent(event: KeyboardEvent, down: boolean) {
