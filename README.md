@@ -93,7 +93,11 @@ During implementation, I encountered several technical limitations of WebGPU, af
 
 
 ## Other Thoughts
-I was advised to avoid **matrix multiplications inside the fragment shader**, as they can be relatively costly compared to vertex or compute stages. However, in practice, the frame rate does not 
+I was advised to avoid **matrix multiplications inside the fragment shader**, as they can be relatively costly compared to vertex or compute stages. However, in practice, the frame rate does not drop much.
+
+   Compute ndc in fragment shader      |   Compute ndc in vertex shader
+:-------------------------:|:-------------------------:
+ ![](./imgs/f+/1024_frag_ndc.png) | ![](./imgs/f+/1024_vert_ndc.png)
 
 ### Credits
 
