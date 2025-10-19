@@ -49,7 +49,7 @@ export const constants = {
 // =================================
 
 function evalShaderRaw(raw: string) {
-    console.log('numClusters', constants.numClusters);
+    console.log('lightRadius', constants.lightRadius);
     return eval('`' + raw.replaceAll('${', '${constants.') + '`');
 }
 
