@@ -49,6 +49,7 @@ export const constants = {
 // =================================
 
 function evalShaderRaw(raw: string) {
+    console.log('numClusters', constants.numClusters);
     return eval('`' + raw.replaceAll('${', '${constants.') + '`');
 }
 
